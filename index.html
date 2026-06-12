@@ -109,31 +109,38 @@ function render(filter=''){
 
     list.innerHTML='';
 
-    filtered.forEach(r => {
+   filtered.forEach(r => {
 
-        const d=document.createElement('div');
+    const d = document.createElement('div');
 
-        d.className='item';
+    d.className = 'item';
 
-        d.innerHTML=
-            '<b>'+r.eircode+'</b><br>'+r.address;
+    d.innerHTML = `
+        <b>${r.eircode}</b><br>
+        ${r.address}<br>
+        <small>${r.county}</small>
+    `;
 
-        d.onclick=()=>{
+    d.onclick = () => {
 
-            map.setView([r.lat,r.lng],14);
+        map.setView([r.lat, r.lng], 14);
 
-            markers.forEach(m=>{
-                if(
-                    m.getLatLng().lat===r.lat &&
-                    m.getLatLng().lng===r.lng
-                ){
-                    m.openPopup();
-                }
-            });
-        };
+        markers.forEach(m => {
 
-        list.appendChild(d);
-    });
+            if (
+                m.getLatLng().lat === r.lat &&
+                m.getLatLng().lng === r.lng
+            ) {
+                m.openPopup();
+            }
+
+        });
+
+    };
+
+    list.appendChild(d);
+
+});
 
     document.getElementById('status').textContent =
         filtered.length + ' locations loaded';
@@ -171,12 +178,13 @@ fetch(CSV_URL)
         if(isNaN(r.lat) || isNaN(r.lng))
             return;
 
-        const marker=L.marker([r.lat,r.lng])
-        .addTo(map)
-        .bindPopup(
-            '<b>'+r.eircode+'</b><br>'+
-            r.address
-        );
+        const marker = L.marker([r.lat, r.lng])
+.addTo(map)
+.bindPopup(`
+    <b>${r.eircode}</b><br>
+    ${r.address}<br>
+    ${r.county}
+`);
 
         markers.push(marker);
     });

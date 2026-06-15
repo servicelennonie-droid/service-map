@@ -158,19 +158,21 @@ fetch(CSV_URL)
 
         const p=line.match(/(".*?"|[^,]+)(?=,|$)/g)||[];
 
-        return {
+       return {
 
-            address:(p[0]||'').replaceAll('"',''),
+    address:(p[0]||'').replaceAll('"',''),
 
-            county:(p[1]||'').replaceAll('"',''),
+    county:(p[1]||'').replaceAll('"',''),
 
-            eircode:(p[2]||'').replaceAll('"',''),
+    eircode:(p[2]||'').replaceAll('"',''),
 
-            lat:parseFloat(p[3]),
+    lat:parseFloat(p[3]),
 
-            lng:parseFloat(p[4])
+    lng:parseFloat(p[4]),
 
-        };
+    ticketUrl:(p[6]||'').replaceAll('"','')
+
+};
     });
 
     rows.forEach(r=>{
@@ -178,12 +180,16 @@ fetch(CSV_URL)
         if(isNaN(r.lat) || isNaN(r.lng))
             return;
 
-        const marker = L.marker([r.lat, r.lng])
+       const marker = L.marker([r.lat, r.lng])
 .addTo(map)
 .bindPopup(`
     <b>${r.eircode}</b><br>
     ${r.address}<br>
-    ${r.county}
+    ${r.county}<br><br>
+
+    <a href="${r.ticketUrl}" target="_blank">
+        🎫 Open Zoho Ticket
+    </a>
 `);
 
         markers.push(marker);

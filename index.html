@@ -37,13 +37,14 @@ input{
 }
 
 .item{
-    padding:8px;
-    border-bottom:1px solid #eee;
+    padding:10px;
+    border-bottom:1px solid #ddd;
     cursor:pointer;
+    transition:background 0.2s;
 }
 
 .item:hover{
-    background:#f5f5f5;
+    background:#f0f7ff;
 }
 
 @media(max-width:768px){
@@ -115,11 +116,11 @@ function render(filter=''){
 
     d.className = 'item';
 
-    d.innerHTML = `
-        <b>${r.eircode}</b><br>
-        ${r.address}<br>
-        <small>${r.county}</small>
-    `;
+   d.innerHTML = `
+    <b>📍 ${r.eircode}</b><br>
+    ${r.address}<br>
+    <small>🏛 ${r.county}</small>
+`;
 
     d.onclick = () => {
 

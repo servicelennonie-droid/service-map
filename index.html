@@ -190,8 +190,13 @@ fetch(CSV_URL)
     ${r.ticketUrl && r.ticketUrl.startsWith('http')
       ? `<a href="${r.ticketUrl}" target="_blank">
            🎫 Open Zoho Ticket
-         </a>`
+         </a><br><br>`
       : ''}
+
+    <a href="https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.lng}"
+       target="_blank">
+       🧭 Navigate
+    </a>
 `)
 
         markers.push(marker);

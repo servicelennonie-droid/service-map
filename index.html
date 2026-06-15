@@ -187,11 +187,12 @@ fetch(CSV_URL)
     ${r.address}<br>
     ${r.county}<br><br>
 
- ${r.ticketUrl && r.ticketUrl.startsWith('http') ? `
-    <a href="${r.ticketUrl}" target="_blank">
-        🎫 Open Zoho Ticket
-    </a>
-` : ''}
+    ${r.ticketUrl && r.ticketUrl.startsWith('http')
+      ? `<a href="${r.ticketUrl}" target="_blank">
+           🎫 Open Zoho Ticket
+         </a>`
+      : ''}
+`)
 
         markers.push(marker);
     });

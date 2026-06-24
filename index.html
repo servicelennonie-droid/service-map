@@ -171,7 +171,8 @@ fetch(CSV_URL)
 
     lng:parseFloat(p[4]),
 
-    ticketUrl:(p[6]||'').replaceAll('"','')
+   ticketUrl:(p[6]||'').replaceAll('"',''),
+priority:(p[7]||'').replaceAll('"','')
 
 };
     });

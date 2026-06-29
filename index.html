@@ -209,7 +209,11 @@ priority:(p[7]||'').replaceAll('"','')
     <b>${r.eircode}</b><br>
     ${r.address}<br>
     ${r.county}<br><br>
-    Priority: ${r.priority}<br>
+    Priority: ${
+    r.priority === "High"
+        ? "<span style='color:red;font-weight:bold'>🔴 HIGH</span>"
+        : "<span style='color:#1976d2;font-weight:bold'>🔵 NORMAL</span>"
+}<br>
 
     ${r.ticketUrl && r.ticketUrl.startsWith('http')
       ? `<a href="${r.ticketUrl}" target="_blank">

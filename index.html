@@ -157,7 +157,7 @@ fetch(CSV_URL)
 
     rows=lines.map(line=>{
 
-        const p=line.match(/(".*?"|[^,]+)(?=,|$)/g)||[];
+        const p = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
 
        return {
 

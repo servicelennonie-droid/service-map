@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Service Planner v2.3</title>
+<title>Service Planner v2.4</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 
 <style>
 :root{
@@ -1877,6 +1878,119 @@ body.zoom-close .service-marker.normal{
     }
 }
 
+
+/* ===== v2.4 map clarity experiments ===== */
+.leaflet-control-layers{
+    border:0 !important;
+    border-radius:10px !important;
+    box-shadow:0 8px 22px rgba(15,23,42,0.14) !important;
+    overflow:hidden;
+    font-family:var(--font-sans);
+}
+
+.leaflet-control-layers-expanded{
+    padding:7px 9px 7px 8px !important;
+    background:rgba(255,255,255,0.95) !important;
+}
+
+.leaflet-control-layers-base label{
+    display:block;
+    margin:2px 0;
+    font-size:12.5px;
+    font-weight:600;
+    color:#334155;
+}
+
+.leaflet-control-layers-selector{
+    margin-right:5px;
+}
+
+.service-cluster-wrapper{
+    background:transparent;
+    border:0;
+}
+
+.service-cluster{
+    width:34px;
+    height:34px;
+    border-radius:999px;
+    display:grid;
+    place-items:center;
+    background:#1f7ed0;
+    color:#fff;
+    border:3px solid rgba(255,255,255,0.95);
+    box-shadow:0 8px 18px rgba(15,23,42,0.28);
+    font-weight:700;
+    letter-spacing:-0.02em;
+}
+
+.service-cluster span{
+    font-size:13px;
+    line-height:1;
+}
+
+.service-cluster.medium{
+    width:40px;
+    height:40px;
+    background:#176db9;
+}
+
+.service-cluster.large{
+    width:48px;
+    height:48px;
+    background:#115a9a;
+}
+
+.service-cluster.medium span{font-size:14px;}
+.service-cluster.large span{font-size:15px;}
+
+.route-mode-switch{
+    gap:7px;
+}
+
+#routeModeText{
+    min-width:76px;
+    text-align:left;
+}
+
+.route-item{
+    cursor:pointer;
+}
+
+.route-item:hover{
+    background:#f8fbff;
+}
+
+.route-tools{
+    gap:4px;
+}
+
+.route-tools .mini-tools{
+    gap:3px;
+}
+
+.icon-btn.remove-stop{
+    font-size:20px;
+    line-height:1;
+}
+
+.small-btn.route-plus,
+.small-btn.route-minus{
+    width:32px;
+    padding:0;
+    font-size:19px;
+    line-height:1;
+}
+
+.popup-card{
+    min-width:185px;
+}
+
+.popup-links a{
+    min-width:48px;
+    justify-content:center;
+}
+
 </style>
 </head>
 
@@ -1922,10 +2036,10 @@ body.zoom-close .service-marker.normal{
                 <div class="route-heading">
                     <div class="section-title">Today's Route</div>
                 </div>
-                <label class="route-mode-switch" title="Turn on before adding, removing or reordering route stops">
+                <label class="route-mode-switch" title="Turn Route Builder on before adding, removing or reordering route stops">
                     <input id="routeEditMode" type="checkbox">
                     <span class="switch-track"><span class="switch-thumb"></span></span>
-                    <span id="routeModeText">Edit off</span>
+                    <span id="routeModeText">Builder off</span>
                 </label>
             </div>
 
@@ -1978,10 +2092,11 @@ body.zoom-close .service-marker.normal{
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
 <script>
 /*
-    Service Planner v2.3 safer route editing + cleaner map UI
+    Service Planner v2.4 cluster test + clean map style + Route Builder wording
     Single file app: Google Sheets CSV -> Leaflet map -> dispatch route planner.
 */
 
@@ -2005,9 +2120,54 @@ const map = L.map("map", {
     preferCanvas:false
 }).setView([53.35, -7.7], 7);
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution:"&copy; OpenStreetMap contributors"
+const standardTiles = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution:"&copy; OpenStreetMap contributors",
+    maxZoom:19
+});
+
+const cleanTiles = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    attribution:"&copy; OpenStreetMap contributors &copy; CARTO",
+    subdomains:"abcd",
+    maxZoom:20
+});
+
+cleanTiles.addTo(map);
+
+L.control.layers({
+    "Clean map":cleanTiles,
+    "Standard map":standardTiles
+}, {}, {
+    position:"topright",
+    collapsed:false
 }).addTo(map);
+
+const normalClusterGroup = (typeof L.markerClusterGroup === "function")
+    ? L.markerClusterGroup({
+        showCoverageOnHover:false,
+        spiderfyOnMaxZoom:true,
+        zoomToBoundsOnClick:true,
+        removeOutsideVisibleBounds:true,
+        disableClusteringAtZoom:12,
+        maxClusterRadius:function(zoom){
+            if(zoom <= 8){ return 48; }
+            if(zoom <= 10){ return 38; }
+            return 28;
+        },
+        iconCreateFunction:function(cluster){
+            const count = cluster.getChildCount();
+            const sizeClass = count >= 50 ? "large" : count >= 15 ? "medium" : "small";
+            const size = count >= 50 ? 48 : count >= 15 ? 40 : 34;
+            return L.divIcon({
+                className:"service-cluster-wrapper",
+                html:'<div class="service-cluster ' + sizeClass + '"><span>' + count + '</span></div>',
+                iconSize:[size, size],
+                iconAnchor:[size / 2, size / 2]
+            });
+        }
+    })
+    : L.layerGroup();
+
+normalClusterGroup.addTo(map);
 
 const els = {
     search:document.getElementById("search"),
@@ -2168,10 +2328,6 @@ function createMarkerIcon(job){
 }
 
 function buildPopup(job){
-    const index = getSelectedIndex(job);
-    const priorityLabel = isHighPriority(job)
-        ? '<span style="color:#ef4444">High Priority</span>'
-        : '<span style="color:#1f7ed0">Normal Priority</span>';
     const ticketLink = isValidUrl(job.ticketUrl)
         ? '<a href="' + escapeHtml(job.ticketUrl) + '" target="_blank" rel="noopener">Zoho</a>'
         : "";
@@ -2181,7 +2337,6 @@ function buildPopup(job){
         '<div class="popup-card">' +
             '<strong>' + escapeHtml(job.eircode || "No Eircode") + '</strong>' +
             '<div class="popup-meta">' + escapeHtml(job.address) + '<br>' + escapeHtml(job.county) + '</div>' +
-            '<div class="popup-priority">' + priorityLabel + '</div>' +
             '<div class="popup-links">' + ticketLink + navigateLink + '</div>' +
         '</div>';
 }
@@ -2194,6 +2349,7 @@ function refreshMarkersAndPopups(){
             job.marker.setZIndexOffset(markerZIndex(job));
         }
     });
+    updateMarkerVisibility();
 }
 
 function redrawRouteLine(){
@@ -2279,6 +2435,10 @@ function moveStop(jobId, direction){
     const index = selectedJobs.findIndex(job => job.id === jobId);
     const nextIndex = index + direction;
     if(index === -1 || nextIndex < 0 || nextIndex >= selectedJobs.length){
+        return;
+    }
+    // The first selected job is the locked starting point. Reordering only affects stops 2-5.
+    if(index === 0 || nextIndex === 0){
         return;
     }
     const temp = selectedJobs[index];
@@ -2378,26 +2538,53 @@ function updateZoomClass(){
     document.body.classList.toggle("zoom-close", zoom >= 12);
 }
 
-function shouldShowMarker(job){
-    // v2.3: the map always shows every job pin. Search and tabs only filter the sidebar.
-    return Boolean(job && job.marker);
+function shouldClusterJob(job){
+    // Keep high-priority and selected route pins visible above clusters.
+    return Boolean(job && job.marker && !isHighPriority(job) && !isSelected(job));
+}
+
+function removeMarkerFromAllLayers(marker){
+    if(!marker){
+        return;
+    }
+    if(map.hasLayer(marker)){
+        map.removeLayer(marker);
+    }
+    if(normalClusterGroup && normalClusterGroup.hasLayer(marker)){
+        normalClusterGroup.removeLayer(marker);
+    }
+}
+
+function placeMarker(job){
+    if(!job || !job.marker){
+        return;
+    }
+
+    const inCluster = normalClusterGroup && normalClusterGroup.hasLayer(job.marker);
+    const onMap = map.hasLayer(job.marker);
+
+    if(shouldClusterJob(job)){
+        if(!inCluster){
+            if(onMap){
+                map.removeLayer(job.marker);
+            }
+            normalClusterGroup.addLayer(job.marker);
+        }
+    }else{
+        if(inCluster){
+            normalClusterGroup.removeLayer(job.marker);
+        }
+        if(!map.hasLayer(job.marker)){
+            job.marker.addTo(map);
+        }
+    }
 }
 
 function updateMarkerVisibility(){
-    rows.forEach(job => {
-        if(!job.marker){
-            return;
-        }
-
-        const visible = shouldShowMarker(job);
-        const onMap = map.hasLayer(job.marker);
-
-        if(visible && !onMap){
-            job.marker.addTo(map);
-        }else if(!visible && onMap){
-            map.removeLayer(job.marker);
-        }
-    });
+    rows.forEach(placeMarker);
+    if(normalClusterGroup && typeof normalClusterGroup.refreshClusters === "function"){
+        normalClusterGroup.refreshClusters();
+    }
 }
 
 function updatePinModeButtons(){
@@ -2444,7 +2631,7 @@ function renderStats(){
         els.routeEditMode.checked = routeEditMode;
     }
     if(els.routeModeText){
-        els.routeModeText.textContent = routeEditMode ? "Edit on" : "Edit off";
+        els.routeModeText.textContent = routeEditMode ? "Builder on" : "Builder off";
     }
 
     els.tabButtons.forEach(button => {
@@ -2474,10 +2661,10 @@ function renderRoutePanel(){
 
     els.routeList.innerHTML = selectedJobs.map((job, index) => {
         const isStart = index === 0;
-        const routeType = isStart ? "Start" : "Stop " + (index + 1);
+        const routeType = isStart ? "Start locked" : "Stop " + (index + 1);
         const routeClass = isStart ? "start" : "stop";
         return '' +
-            '<article class="route-item">' +
+            '<article class="route-item" data-id="' + escapeHtml(job.id) + '">' +
                 '<div class="route-number ' + routeClass + '">' + (index + 1) + '</div>' +
                 '<div class="route-info">' +
                     '<span class="route-type ' + routeClass + '">' + escapeHtml(routeType) + '</span>' +
@@ -2487,23 +2674,28 @@ function renderRoutePanel(){
                 '</div>' +
                 '<div class="route-tools">' +
                     '<div class="mini-tools">' +
-                        '<button type="button" class="icon-btn" data-action="up" data-id="' + escapeHtml(job.id) + '" title="Move up" aria-label="Move up" ' + (index === 0 ? "disabled" : "") + '>&uarr;</button>' +
-                        '<button type="button" class="icon-btn" data-action="down" data-id="' + escapeHtml(job.id) + '" title="Move down" aria-label="Move down" ' + (index === selectedJobs.length - 1 ? "disabled" : "") + '>&darr;</button>' +
-                    '</div>' +
-                    '<div class="mini-tools">' +
-                        '<button type="button" class="icon-btn" data-action="focus" data-id="' + escapeHtml(job.id) + '" title="Show on map" aria-label="Show on map">&#8982;</button>' +
-                        '<button type="button" class="icon-btn danger" data-action="remove" data-id="' + escapeHtml(job.id) + '" title="Remove" aria-label="Remove">&times;</button>' +
+                        '<button type="button" class="icon-btn" data-action="up" data-id="' + escapeHtml(job.id) + '" title="Move up" aria-label="Move up" ' + (index <= 1 ? "disabled" : "") + '>&uarr;</button>' +
+                        '<button type="button" class="icon-btn" data-action="down" data-id="' + escapeHtml(job.id) + '" title="Move down" aria-label="Move down" ' + (index === 0 || index === selectedJobs.length - 1 ? "disabled" : "") + '>&darr;</button>' +
+                        '<button type="button" class="icon-btn danger remove-stop" data-action="remove" data-id="' + escapeHtml(job.id) + '" title="Remove from route" aria-label="Remove from route">&minus;</button>' +
                     '</div>' +
                 '</div>' +
             '</article>';
     }).join("");
+
+    els.routeList.querySelectorAll(".route-item[data-id]").forEach(item => {
+        item.addEventListener("click", () => {
+            const job = rows.find(row => row.id === item.dataset.id);
+            if(job){
+                focusJob(job);
+            }
+        });
+    });
 
     els.routeList.querySelectorAll("button[data-action]").forEach(button => {
         button.addEventListener("click", event => {
             event.stopPropagation();
             const action = button.dataset.action;
             const id = button.dataset.id;
-            const job = rows.find(item => item.id === id);
 
             if(action === "up"){
                 moveStop(id, -1);
@@ -2511,8 +2703,6 @@ function renderRoutePanel(){
                 moveStop(id, 1);
             }else if(action === "remove"){
                 removeStop(id);
-            }else if(action === "focus" && job){
-                focusJob(job);
             }
         });
     });
@@ -2577,10 +2767,11 @@ function jobCardHtml(job){
         : "";
     const navigateLink = '<a class="job-link" href="https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(coordinates(job)) + '&travelmode=driving" target="_blank" rel="noopener">Nav</a>';
     const addDisabled = !selected && selectedJobs.length >= MAX_ROUTE_STOPS ? "disabled" : "";
-    const actionLabel = selected ? "Remove" : "Add";
-    const actionClass = selected ? " selected-action" : "";
+    const actionLabel = selected ? "&minus;" : "+";
+    const actionTitle = selected ? "Remove from route" : "Add to route";
+    const actionClass = selected ? " selected-action route-minus" : " route-plus";
     const routeToggleButton = routeEditMode
-        ? '<button type="button" class="small-btn' + actionClass + '" data-action="toggle" ' + addDisabled + '>' + actionLabel + '</button>'
+        ? '<button type="button" class="small-btn' + actionClass + '" data-action="toggle" title="' + actionTitle + '" aria-label="' + actionTitle + '" ' + addDisabled + '>' + actionLabel + '</button>'
         : '';
 
     return '' +
@@ -2676,7 +2867,10 @@ function renderAll(){
 }
 
 function createMarkers(){
-    markers.forEach(marker => map.removeLayer(marker));
+    markers.forEach(removeMarkerFromAllLayers);
+    if(normalClusterGroup && typeof normalClusterGroup.clearLayers === "function"){
+        normalClusterGroup.clearLayers();
+    }
     markers = [];
 
     rows.forEach(job => {
@@ -2684,7 +2878,7 @@ function createMarkers(){
             icon:createMarkerIcon(job),
             keyboard:true,
             title:job.eircode || job.address
-        }).addTo(map);
+        });
 
         marker.bindPopup(buildPopup(job));
         marker.on("click", () => {
@@ -2694,6 +2888,7 @@ function createMarkers(){
         });
         job.marker = marker;
         markers.push(marker);
+        placeMarker(job);
     });
 }
 
@@ -2871,6 +3066,7 @@ els.showLegend.addEventListener("click", () => {
     saveUiState({ legendHidden:false });
 });
 
+// Future parking note: keyboard shortcuts can be added later once the route workflow is settled.
 initUiState();
 loadJobs();
 </script>
